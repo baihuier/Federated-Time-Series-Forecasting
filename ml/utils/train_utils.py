@@ -168,7 +168,17 @@ def test(model, data, criterion, device="cuda") -> Union[
 
     y_true = torch.stack(y_true)
     y_pred = torch.stack(y_pred)
-    mse, rmse, mae, r2, nrmse = accumulate_metric(y_true.cpu(), y_pred.cpu())
+    # 根据实际输出维度自动设置dims参数（避免数组越界）
+    output_dim = y_true.shape[1] if len(y_true.shape) > 1 else 1
+    if output_dim == 1:
+        dims = [0]  # 单目标情况（如电力数据）
+    else:
+        # 多目标情况：使用前两个维度，或如果维度足够大则使用[3, 4]（兼容原基站数据）
+        if output_dim > 4:
+            dims = [3, 4]  # 原基站数据的默认值
+        else:
+            dims = list(range(min(output_dim, 2)))  # 使用前两个维度
+    mse, rmse, mae, r2, nrmse = accumulate_metric(y_true.cpu(), y_pred.cpu(), dims=dims)
     if criterion is None:
         return mse, rmse, mae, r2, nrmse, y_pred
 

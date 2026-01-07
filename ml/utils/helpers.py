@@ -83,21 +83,28 @@ def accumulate_metric(y_true: Union[np.ndarray, torch.tensor],
     mae = mean_absolute_error(y_true, y_pred)
     r2 = r2_score(y_true, y_pred)
 
-    y_true_first_dim = y_true[:, dims[0]]
-    y_pred_first_dim = y_pred[:, dims[0]]
+    # 如果dims[0]超出范围，使用0（适用于单目标情况）
+    dim_idx = dims[0] if dims[0] < y_true.shape[1] else 0
+    y_true_first_dim = y_true[:, dim_idx]
+    y_pred_first_dim = y_pred[:, dim_idx]
 
     rmse_first_dim = math.sqrt(mean_squared_error(y_true_first_dim, y_pred_first_dim))
     nrmse_first_dim = rmse_first_dim / np.mean(y_true_first_dim)
 
     if y_true.shape[1] >= 2:
         nrmses = 0
+        valid_dims_count = 1  # 至少包含第一个维度
         for i in range(1, len(dims)):
+            # 如果dims[i]超出范围，跳过
+            if dims[i] >= y_true.shape[1]:
+                continue
             y_true_dim = y_true[:, dims[i]]
             y_pred_dim = y_pred[:, dims[i]]
             rmse_dim = math.sqrt(mean_squared_error(y_true_dim, y_pred_dim))
             nrmse_dim = rmse_dim / np.mean(y_true_dim)
             nrmses += nrmse_dim
-        nrmse = (nrmse_first_dim + nrmses) / len(dims)
+            valid_dims_count += 1
+        nrmse = (nrmse_first_dim + nrmses) / valid_dims_count
     else:
         nrmse = nrmse_first_dim
 
